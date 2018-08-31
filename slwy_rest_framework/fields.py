@@ -17,9 +17,6 @@ class Header(Field):
         for k, v in kwargs.items():
             self.data[k] = v
 
-    def __str__(self):
-        return '<%s:%s>' % (self.__class__.__name__, self.data)
-
 
 # 登录类
 class LoginField(Field):

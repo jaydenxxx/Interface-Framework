@@ -28,3 +28,9 @@ class LoginField(Field):
 class ParamField(Field):
     def __init__(self, data):
         super(ParamField, self).__init__(data=data)
+
+
+# API请求地址类
+class UrlField(Field):
+    def __init__(self, data):
+        super(UrlField, self).__init__(data=data)

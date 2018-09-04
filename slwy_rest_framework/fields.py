@@ -1,3 +1,6 @@
+import json
+
+
 class Field:
     def __init__(self, data, **kwargs):
         self.data = data
@@ -27,6 +30,7 @@ class LoginField(Field):
 # API入参类
 class ParamField(Field):
     def __init__(self, data):
+        self.json = json.dumps(data)
         super(ParamField, self).__init__(data=data)
 
 
@@ -34,3 +38,11 @@ class ParamField(Field):
 class UrlField(Field):
     def __init__(self, data):
         super(UrlField, self).__init__(data=data)
+
+
+# 账号类
+class AccountField(Field):
+    def __init__(self, data):
+        super(AccountField, self).__init__(data=data)
+        for k, v in data.items():
+            setattr(self, k, v)

@@ -1,4 +1,4 @@
-from slwy_rest_framework.fields import Field, Header
+from slwy_rest_framework.fields import Field, Header, ParamField
 import requests
 import json
 
@@ -10,8 +10,17 @@ class ModelMetaClass(type):
         mappings = dict()
 
         Headers = Header()
-        Headers.data['Authorization'] = LoginAPI().get_auth()
+        login_ins = LoginAPI()
+        # try:
+        #     account_data = attrs['account'].data
+        #     login_ins(account_data)
+        # finally:
+        Headers.data['Authorization'] = login_ins.get_auth()
         attrs['headers'] = Headers
+
+        # Headers = Header()
+        # Headers.data['Authorization'] = LoginAPI().get_auth()
+        # attrs['headers'] = Headers
 
         for k, v in attrs.items():
             if isinstance(v, Field):
@@ -29,8 +38,21 @@ class ModelMetaClass(type):
 
         return type.__new__(cls, name, bases, attrs)
 
+    def __set_header(cls, attrs):
+        Headers = Header()
+        if hasattr(cls, "account"):
+            account_data = attrs['account'].data
+            LoginAPI.reset_account(account_data)
+        Headers.data['Authorization'] = LoginAPI().get_auth()
+        attrs['headers'] = Headers
+
 
 class LoginAPI:
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            if hasattr(self, k):
+                setattr(self, k, v)
+
     headers = {
         "Accept": "application/json, text/plain, */*",
         "Content-Type": "application/json;charset=UTF-8",
@@ -49,6 +71,12 @@ class LoginAPI:
     data = json.dumps(__data_dict)
     login_url = "http://172.17.1.249:34007/cuser/cuserinfo/login"
     response = None
+
+    def reset_account(self, **kwargs):
+        self.loginName = kwargs['loginName']
+        self.userPassword = kwargs['userPassword']
+        self.partnerCode = kwargs['partnerCode']
+        self.partnerType = kwargs['partnerType']
 
     def get(self):
         response = requests.post(url=self.login_url, data=self.data, headers=self.headers)
@@ -90,28 +118,47 @@ class Model(dict, metaclass=ModelMetaClass):
         response = self.dispatch()
         return response
 
-    def get_request_data(self):
-        request_data = self.__mappings__['params'].data
-        if isinstance(request_data, dict):
-            request_data = json.dumps(request_data)
-            self.request_data = request_data
-
     def update_request_data(self, data):
         if isinstance(data, dict):
             pass
         else:
             raise TypeError("data must be a dict!")
 
-    def reset_request_data(self):
-        pass
+    def reset_request_data(self, data):
+        """
+        重置api入参
+        :param data:
+        :return:
+        """
+        params = ParamField(data)
+        self.__mappings__['params'] = params
+        self.as_view()
 
-    def get_request_header(self):
+    def fetch_request_data(self):
+        """
+        获取元类的api入参
+        :return:
+        """
+        request_data = self.__mappings__['params'].data
+        if isinstance(request_data, dict):
+            request_data = json.dumps(request_data)
+            self.request_data = request_data
+
+    def fetch_request_header(self):
+        """
+        获取元类的headers属性
+        :return:
+        """
         request_headers = self.__mappings__['headers'].data
         if not isinstance(request_headers, dict):
             raise TypeError("headers must be a dict type!")
         self.request_headers = request_headers
 
-    def get_request_url(self):
+    def fetch_request_url(self):
+        """
+        获取元类的api url
+        :return:
+        """
         requests_url = self.__mappings__['url'].data
         if requests_url is None:
             raise Exception("you must set api url in interface instance class!")
@@ -127,13 +174,13 @@ class Model(dict, metaclass=ModelMetaClass):
 
     def dispatch(self):
         # 设置请求参数
-        self.get_request_data()
+        self.fetch_request_data()
 
         # 设置请求headers
-        self.get_request_header()
+        self.fetch_request_header()
 
         # 设置请求地址
-        self.get_request_url()
+        self.fetch_request_url()
 
         get_request_response = self._request_get()
         if get_request_response.status_code == 200:
@@ -143,4 +190,4 @@ class Model(dict, metaclass=ModelMetaClass):
         if post_request_response.status_code == 200:
             return post_request_response
 
-        raise Exception("connect %s fails!" % self.get_request_url())
+        raise Exception("connect %s fails!" % self.fetch_request_url())
